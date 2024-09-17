@@ -14,6 +14,7 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import page_object.LoginPage;
 import page_object.MainPage;
 import page_object.ProfilePage;
+import page_object.RegisterPage;
 
 import java.util.concurrent.TimeUnit;
 
@@ -35,19 +36,14 @@ public class TransitionsPersonalAccountTest {
             System.setProperty("webdriver.chrome.driver", "src/main/resources/chromedriver");
             ChromeOptions options = new ChromeOptions();
             driver = new ChromeDriver(options);
-            // Установка неявного ожидания
             driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-            // Переход на тестируемый сайт
             driver.navigate().to("https://stellarburgers.nomoreparties.site/");
         } else if (driverType.equals("yandexdriver")) {
             System.setProperty("webdriver.chrome.driver", "src/main/resources/yandexdriver");
-            // Установка пути к браузеру Yandex
             ChromeOptions options = new ChromeOptions();
             options.setBinary("/Applications/Yandex.app/Contents/MacOS/Yandex");
             driver = new ChromeDriver(options);
-            // Установка неявного ожидания
             driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-            // Переход на тестируемый сайт
             driver.navigate().to("https://stellarburgers.nomoreparties.site/");
         }
     }
@@ -60,12 +56,21 @@ public class TransitionsPersonalAccountTest {
         };
     }
 
+    // Метод для регистрации пользователя перед тестами авторизации
+    public void registerUser() {
+        MainPage mainPage = new MainPage(driver);
+        mainPage.clickOnAccountButton(); // Переход на страницу авторизации
+        RegisterPage registerPage = new RegisterPage(driver);
+        registerPage.waitForLoadRegisterPage(); // Ожидание загрузки страницы регистрации
+        // Регистрация нового пользователя
+        registerPage.registration("Гарри", EMAIL, PASSWORD);
+    }
+
     @Test
     @DisplayName("Переход в личный кабинет.")
     @Description("Проверка перехода по клику на 'Личный кабинет'.")
     public void transitionToProfilePageTest() {
-        MainPage mainPage = new MainPage(driver);
-        mainPage.clickOnAccountButton();
+        registerUser(); // Регистрация пользователя перед авторизацией
         LoginPage loginPage = new LoginPage(driver);
         loginPage.waitForLoadEntrance();
         Assert.assertTrue("Страница авторизации не отобразилась", driver.findElement(loginPage.entrance).isDisplayed());
@@ -75,6 +80,7 @@ public class TransitionsPersonalAccountTest {
     @DisplayName("Переход в конструктор из личного кабинета.")
     @Description("Проверка перехода на вкладку 'Конструктор' из страницы авторизации пользователя.")
     public void transitionToConstructorFromProfilePageTest() {
+        registerUser(); // Регистрация пользователя перед авторизацией
         MainPage mainPage = new MainPage(driver);
         mainPage.waitForInvisibilityLoadingAnimation();
         mainPage.clickOnAccountButton();
@@ -82,13 +88,14 @@ public class TransitionsPersonalAccountTest {
         loginPage.waitForLoadEntrance();
         loginPage.clickOnConstructorButton();
         mainPage.waitForLoadMainPage();
-        Assert.assertTrue("Переход  в конструктор из личного кабинете не прошел", driver.findElement(mainPage.textBurgerMainPage).isDisplayed());
+        Assert.assertTrue("Переход в конструктор из личного кабинета не прошел", driver.findElement(mainPage.textBurgerMainPage).isDisplayed());
     }
 
     @Test
     @DisplayName("Клик по логотипу 'Stellar Burgers'.")
     @Description("Проверка перехода в конструктор при нажатии на логотип 'Stellar Burgers'.")
     public void transitionToStellarBurgersFromProfilePageTest() {
+        registerUser(); // Регистрация пользователя перед авторизацией
         MainPage mainPage = new MainPage(driver);
         mainPage.clickOnAccountButton();
         LoginPage loginPage = new LoginPage(driver);
@@ -102,6 +109,7 @@ public class TransitionsPersonalAccountTest {
     @DisplayName("Выход из аккаунта")
     @Description("Проверка выхода по кнопке 'Выйти' в личном кабинете.")
     public void exitFromProfileTest() {
+        registerUser(); // Регистрация пользователя перед авторизацией
         MainPage mainPage = new MainPage(driver);
         mainPage.clickOnAccountButton();
         LoginPage loginPage = new LoginPage(driver);
@@ -118,8 +126,6 @@ public class TransitionsPersonalAccountTest {
 
     @After
     public void tearDown() {
-        // Закрытие браузера
-        driver.quit();
+        driver.quit(); // Закрытие браузера
     }
-
 }

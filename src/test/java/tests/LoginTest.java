@@ -17,14 +17,13 @@ import page_object.RegisterPage;
 
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 
 @RunWith(Parameterized.class)
 public class LoginTest {
     private WebDriver driver;
     private String driverType;
     private final static String EMAIL = "harrypotter@yandex.ru";
-    private final static String PASSWORD = "harry2811";
+    private final static String PASSWORD = "harry1234";
 
     public LoginTest(String driverType) {
         this.driverType = driverType;
@@ -36,19 +35,14 @@ public class LoginTest {
             System.setProperty("webdriver.chrome.driver", "src/main/resources/chromedriver");
             ChromeOptions options = new ChromeOptions();
             driver = new ChromeDriver(options);
-            // Установка неявного ожидания
             driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-            // Переход на тестируемый сайт
             driver.navigate().to("https://stellarburgers.nomoreparties.site/");
         } else if (driverType.equals("yandexdriver")) {
             System.setProperty("webdriver.chrome.driver", "src/main/resources/chromedriver");
-            // Установка пути к браузеру Yandex
             ChromeOptions options = new ChromeOptions();
             options.setBinary("/Applications/Yandex.app/Contents/MacOS/Yandex");
             driver = new ChromeDriver(options);
-            // Установка неявного ожидания
             driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-            // Переход на тестируемый сайт
             driver.navigate().to("https://stellarburgers.nomoreparties.site/");
         }
     }
@@ -61,14 +55,26 @@ public class LoginTest {
         };
     }
 
+    // Метод для регистрации пользователя
+    private void registerUser() {
+        MainPage mainPage = new MainPage(driver);
+        mainPage.clickOnLoginButton(); // Переход на страницу авторизации
+        LoginPage loginPage = new LoginPage(driver);
+        loginPage.clickOnRegister(); // Переход на страницу регистрации
+        RegisterPage registerPage = new RegisterPage(driver);
+
+        // Используем фиксированный email и пароль
+        registerPage.registration("Гарри", EMAIL, PASSWORD);
+    }
+
     @Test
     @DisplayName("Вход по кнопке 'Войти в аккаунт'.")
     @Description("Проверка кнопки 'Войти в аккаунт' на главной странице лендинга.")
     public void enterByLoginButtonTest() {
-        MainPage mainPage = new MainPage(driver);
-        mainPage.clickOnLoginButton();
+        registerUser(); // Регистрация перед авторизацией
         LoginPage loginPage = new LoginPage(driver);
         loginPage.authorization(EMAIL, PASSWORD);
+        MainPage mainPage = new MainPage(driver);
         mainPage.waitForLoadMainPage();
     }
 
@@ -76,10 +82,10 @@ public class LoginTest {
     @DisplayName("Вход по кнопке 'Личный Кабинет'.")
     @Description("Проверка кнопки 'Личный Кабинет' на хедере главной страницы.")
     public void enterByPersonalAccountButtonTest() {
-        MainPage mainPage = new MainPage(driver);
-        mainPage.clickOnAccountButton();
+        registerUser(); // Регистрация перед авторизацией
         LoginPage loginPage = new LoginPage(driver);
         loginPage.authorization(EMAIL, PASSWORD);
+        MainPage mainPage = new MainPage(driver);
         mainPage.waitForLoadMainPage();
     }
 
@@ -87,17 +93,10 @@ public class LoginTest {
     @DisplayName("Вход через кнопку в форме регистрации.")
     @Description("Проверка входа через форму регистрации.")
     public void enterByRegistrationFormTest() {
-        MainPage mainPage = new MainPage(driver);
-        mainPage.clickOnLoginButton();
+        registerUser(); // Регистрация перед авторизацией
         LoginPage loginPage = new LoginPage(driver);
-        loginPage.clickOnRegister();
-        RegisterPage registerPage = new RegisterPage(driver);
-        String name = randomAlphanumeric(4, 8);
-        String email = randomAlphanumeric(6, 10) + "@yandex.ru";;
-        String password = randomAlphanumeric(6, 10);
-        registerPage.registration(name, email, password);
-        loginPage.waitForLoadEntrance();
-        loginPage.authorization(email, password);
+        loginPage.authorization(EMAIL, PASSWORD); // Используем ранее зарегистрированные данные
+        MainPage mainPage = new MainPage(driver);
         mainPage.waitForLoadMainPage();
     }
 
@@ -105,14 +104,14 @@ public class LoginTest {
     @DisplayName("Вход через кнопку в форме восстановления пароля.")
     @Description("Проверка входа через форму восстановления пароля.")
     public void enterByPasswordRecoveryFormatTest() {
-        MainPage mainPage = new MainPage(driver);
-        mainPage.clickOnAccountButton();
+        registerUser(); // Регистрация перед авторизацией
         LoginPage loginPage = new LoginPage(driver);
         loginPage.clickOnForgotPasswordLink();
         RecoverPasswordPage recoverPasswordPage = new RecoverPasswordPage(driver);
         recoverPasswordPage.waitForLoadedRecoverPassword();
         recoverPasswordPage.clickOnLoginLink();
         loginPage.authorization(EMAIL, PASSWORD);
+        MainPage mainPage = new MainPage(driver);
         mainPage.waitForLoadMainPage();
     }
 
