@@ -7,13 +7,10 @@ import org.junit.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.openqa.selenium.*;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import page_object.LoginPage;
 import page_object.MainPage;
 import page_object.RegisterPage;
 
-import java.util.concurrent.TimeUnit;
 
 import static org.apache.commons.lang3.RandomStringUtils.*;
 
@@ -35,25 +32,9 @@ public class RegistrationTest {
 
     @Before
     public void startUp() {
-        if (driverType.equals("chromedriver")) {
-            System.setProperty("webdriver.chrome.driver", "src/main/resources/chromedriver");
-            ChromeOptions options = new ChromeOptions();
-            driver = new ChromeDriver(options);
-            // Установка неявного ожидания
-            driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-            // Переход на тестируемый сайт
-            driver.navigate().to("https://stellarburgers.nomoreparties.site/");
-        } else if (driverType.equals("yandexdriver")) {
-            System.setProperty("webdriver.chrome.driver", "src/main/resources/yandexdriver");
-            // Установка пути к браузеру Yandex
-            ChromeOptions options = new ChromeOptions();
-            options.setBinary("/Applications/Yandex.app/Contents/MacOS/Yandex");
-            driver = new ChromeDriver(options);
-            // Установка неявного ожидания
-            driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-            // Переход на тестируемый сайт
-            driver.navigate().to("https://stellarburgers.nomoreparties.site/");
-        }
+        // Добавляем WebDriver
+        WebDriverSetup webDriverSetup = new WebDriverSetup(driverType);
+        driver = webDriverSetup.getDriver();
     }
 
     @Parameterized.Parameters(name = "Результаты проверок браузера: {0}")
@@ -96,7 +77,8 @@ public class RegistrationTest {
     @After
     public void tearDown() {
         // Закрытие браузера
-        driver.quit();
+        WebDriverSetup webDriverSetup = new WebDriverSetup(driverType);
+        webDriverSetup.closeDriver();
     }
 
     @AfterClass

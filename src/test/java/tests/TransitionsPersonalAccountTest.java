@@ -1,5 +1,7 @@
 package tests;
 
+import client.User;
+import com.github.javafaker.Faker;
 import io.qameta.allure.Description;
 import io.qameta.allure.junit4.DisplayName;
 import org.junit.After;
@@ -9,22 +11,24 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import page_object.LoginPage;
 import page_object.MainPage;
 import page_object.ProfilePage;
 import page_object.RegisterPage;
+import client.UserClient;
+import io.restassured.response.Response;
 
-import java.util.concurrent.TimeUnit;
+
 
 @RunWith(Parameterized.class)
 public class TransitionsPersonalAccountTest {
 
     private WebDriver driver;
-    private String driverType; //добавила в код
-    private final static String EMAIL = "harrypotter@yandex.ru";
-    private final static String PASSWORD = "harry1234";
+    private String driverType;
+    private String email;
+    private String password;
+    private String accessToken; // Переменная для токена
+    private Faker faker;
 
     public TransitionsPersonalAccountTest(String driverType) {
         this.driverType = driverType;
@@ -32,20 +36,13 @@ public class TransitionsPersonalAccountTest {
 
     @Before
     public void startUp() {
-        if (driverType.equals("chromedriver")) {
-            System.setProperty("webdriver.chrome.driver", "src/main/resources/chromedriver");
-            ChromeOptions options = new ChromeOptions();
-            driver = new ChromeDriver(options);
-            driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-            driver.navigate().to("https://stellarburgers.nomoreparties.site/");
-        } else if (driverType.equals("yandexdriver")) {
-            System.setProperty("webdriver.chrome.driver", "src/main/resources/yandexdriver");
-            ChromeOptions options = new ChromeOptions();
-            options.setBinary("/Applications/Yandex.app/Contents/MacOS/Yandex");
-            driver = new ChromeDriver(options);
-            driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-            driver.navigate().to("https://stellarburgers.nomoreparties.site/");
-        }
+        faker = new Faker(); // Инициализация генератора данных
+        email = faker.internet().emailAddress(); // Генерация уникального email
+        password = faker.internet().password(); // Генерация уникального пароля
+
+        // Добавляем WebDriver
+        WebDriverSetup webDriverSetup = new WebDriverSetup(driverType);
+        driver = webDriverSetup.getDriver();
     }
 
     @Parameterized.Parameters(name = "Результаты проверок браузера: {0}")
@@ -57,13 +54,16 @@ public class TransitionsPersonalAccountTest {
     }
 
     // Метод для регистрации пользователя перед тестами авторизации
-    public void registerUser() {
+    private void registerUser() {
         MainPage mainPage = new MainPage(driver);
         mainPage.clickOnAccountButton(); // Переход на страницу авторизации
         RegisterPage registerPage = new RegisterPage(driver);
         registerPage.waitForLoadRegisterPage(); // Ожидание загрузки страницы регистрации
         // Регистрация нового пользователя
-        registerPage.registration("Гарри", EMAIL, PASSWORD);
+        Response response = UserClient.postCreateNewUser(new User("Гарри", email, password));
+        accessToken = response.jsonPath().getString("accessToken"); // Получение токена
+        // Проверка успешной регистрации
+        Assert.assertTrue("Не удалось зарегистрировать пользователя", response.jsonPath().getBoolean("success"));
     }
 
     @Test
@@ -114,7 +114,7 @@ public class TransitionsPersonalAccountTest {
         mainPage.clickOnAccountButton();
         LoginPage loginPage = new LoginPage(driver);
         loginPage.waitForLoadEntrance();
-        loginPage.authorization(EMAIL, PASSWORD);
+        loginPage.authorization(email, password);
         mainPage.waitForLoadMainPage();
         mainPage.clickOnAccountButton();
         ProfilePage profilePage = new ProfilePage(driver);
@@ -126,6 +126,12 @@ public class TransitionsPersonalAccountTest {
 
     @After
     public void tearDown() {
-        driver.quit(); // Закрытие браузера
+        // Удаление пользователя после теста
+        if (accessToken != null) {
+            UserClient.deleteUser(accessToken);
+        }
+        // Закрытие браузера
+        WebDriverSetup webDriverSetup = new WebDriverSetup(driverType);
+        webDriverSetup.closeDriver();
     }
 }

@@ -1,29 +1,31 @@
 package tests;
 
+import client.User;
+import com.github.javafaker.Faker;
 import io.qameta.allure.Description;
 import io.qameta.allure.junit4.DisplayName;
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
 import org.junit.After;
-import org.openqa.selenium.chrome.ChromeOptions;
 import page_object.LoginPage;
 import page_object.MainPage;
 import page_object.RecoverPasswordPage;
 import page_object.RegisterPage;
-
-import java.util.concurrent.TimeUnit;
+import client.UserClient; // Импортируем UserClient
+import io.restassured.response.Response;
 
 
 @RunWith(Parameterized.class)
 public class LoginTest {
     private WebDriver driver;
     private String driverType;
-    private final static String EMAIL = "harrypotter@yandex.ru";
-    private final static String PASSWORD = "harry1234";
+    private String email;
+    private String password;
+    private String accessToken; // Переменная для токена
 
     public LoginTest(String driverType) {
         this.driverType = driverType;
@@ -31,20 +33,15 @@ public class LoginTest {
 
     @Before
     public void startUp() {
-        if (driverType.equals("chromedriver")) {
-            System.setProperty("webdriver.chrome.driver", "src/main/resources/chromedriver");
-            ChromeOptions options = new ChromeOptions();
-            driver = new ChromeDriver(options);
-            driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-            driver.navigate().to("https://stellarburgers.nomoreparties.site/");
-        } else if (driverType.equals("yandexdriver")) {
-            System.setProperty("webdriver.chrome.driver", "src/main/resources/chromedriver");
-            ChromeOptions options = new ChromeOptions();
-            options.setBinary("/Applications/Yandex.app/Contents/MacOS/Yandex");
-            driver = new ChromeDriver(options);
-            driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-            driver.navigate().to("https://stellarburgers.nomoreparties.site/");
-        }
+
+        // Добавляем WebDriver
+        WebDriverSetup webDriverSetup = new WebDriverSetup(driverType);
+        driver = webDriverSetup.getDriver();
+
+        // Инициализация генератора данных
+        Faker faker = new Faker();
+        email = faker.internet().emailAddress(); // Генерация уникального email
+        password = faker.internet().password(); // Генерация уникального пароля
     }
 
     @Parameterized.Parameters(name = "Результаты проверок браузера: {0}")
@@ -63,8 +60,11 @@ public class LoginTest {
         loginPage.clickOnRegister(); // Переход на страницу регистрации
         RegisterPage registerPage = new RegisterPage(driver);
 
-        // Используем фиксированный email и пароль
-        registerPage.registration("Гарри", EMAIL, PASSWORD);
+        // Используем сгенерированные email и пароль
+        Response response = UserClient.postCreateNewUser(new User("Гарри", email, password));
+        accessToken = response.jsonPath().getString("accessToken"); // Получение токена
+        // Проверка успешной регистрации
+        response.then().assertThat().statusCode(201).and().body("success", Matchers.is(true));
     }
 
     @Test
@@ -73,7 +73,7 @@ public class LoginTest {
     public void enterByLoginButtonTest() {
         registerUser(); // Регистрация перед авторизацией
         LoginPage loginPage = new LoginPage(driver);
-        loginPage.authorization(EMAIL, PASSWORD);
+        loginPage.authorization(email, password);
         MainPage mainPage = new MainPage(driver);
         mainPage.waitForLoadMainPage();
     }
@@ -84,7 +84,7 @@ public class LoginTest {
     public void enterByPersonalAccountButtonTest() {
         registerUser(); // Регистрация перед авторизацией
         LoginPage loginPage = new LoginPage(driver);
-        loginPage.authorization(EMAIL, PASSWORD);
+        loginPage.authorization(email, password);
         MainPage mainPage = new MainPage(driver);
         mainPage.waitForLoadMainPage();
     }
@@ -95,7 +95,7 @@ public class LoginTest {
     public void enterByRegistrationFormTest() {
         registerUser(); // Регистрация перед авторизацией
         LoginPage loginPage = new LoginPage(driver);
-        loginPage.authorization(EMAIL, PASSWORD); // Используем ранее зарегистрированные данные
+        loginPage.authorization(email, password); // Используем ранее зарегистрированные данные
         MainPage mainPage = new MainPage(driver);
         mainPage.waitForLoadMainPage();
     }
@@ -110,14 +110,19 @@ public class LoginTest {
         RecoverPasswordPage recoverPasswordPage = new RecoverPasswordPage(driver);
         recoverPasswordPage.waitForLoadedRecoverPassword();
         recoverPasswordPage.clickOnLoginLink();
-        loginPage.authorization(EMAIL, PASSWORD);
+        loginPage.authorization(email, password);
         MainPage mainPage = new MainPage(driver);
         mainPage.waitForLoadMainPage();
     }
 
     @After
     public void tearDown() {
+        // Удаление пользователя после теста
+        if (accessToken != null) {
+            UserClient.deleteUser(accessToken);
+        }
         // Закрытие браузера
-        driver.quit();
+        WebDriverSetup webDriverSetup = new WebDriverSetup(driverType);
+        webDriverSetup.closeDriver();
     }
 }
