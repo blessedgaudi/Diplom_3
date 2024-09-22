@@ -24,7 +24,7 @@ public class RegistrationTest {
     String NAME = randomAlphanumeric(4, 8);
     String EMAIL = randomAlphanumeric(6, 10) + "@yandex.ru";
     String PASSWORD = randomAlphanumeric(10, 20);
-    String PASSWORD_FAILED = randomAlphanumeric(0, 5);
+    String PASSWORD_FAILED = randomAlphanumeric(1, 5);
 
     public RegistrationTest(String driverType) {
         this.driverType = driverType;
@@ -76,14 +76,11 @@ public class RegistrationTest {
 
     @After
     public void tearDown() {
+        // Удаление пользователя после теста
+        if (accessToken != null) {
+            UserClient.deleteUser(accessToken);
+        }
         // Закрытие браузера
-        WebDriverSetup webDriverSetup = new WebDriverSetup(driverType);
-        webDriverSetup.closeDriver();
+        driver.quit();
     }
-
-    @AfterClass
-    public static void afterClass() {
-        UserClient.deleteUser(accessToken);
-    }
-
 }

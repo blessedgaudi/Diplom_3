@@ -67,8 +67,7 @@ public class TransitionsSectionsConstructorTest {
     @After
     public void tearDown() {
         // Закрытие браузера
-        WebDriverSetup webDriverSetup = new WebDriverSetup(driverType);
-        webDriverSetup.closeDriver();
+        driver.quit();
     }
 
 }

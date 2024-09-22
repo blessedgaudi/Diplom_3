@@ -78,6 +78,7 @@ public class LoginPage {
         setEmail(email);
         setPassword(password);
         clickOnLoginButton();
+        waitForInvisibilityLoadingAnimation();
     }
 
     @Step("Выставлено ожидание загрузки страницы с текстом 'Вход'.")

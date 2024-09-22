@@ -11,13 +11,15 @@ public class WebDriverSetup {
 
     public WebDriverSetup(String driverType) {
         if (driverType.equals("chromedriver")) {
-            System.setProperty("webdriver.chrome.driver", "src/main/resources/chromedriver");
+            System.setProperty("webdriver.chrome.driver", "src/main/resources/chromedriver_129");
             ChromeOptions options = new ChromeOptions();
+//            options.addArguments("headless");
             driver = new ChromeDriver(options);
             initializeDriver();
         } else if (driverType.equals("yandexdriver")) {
-            System.setProperty("webdriver.chrome.driver", "src/main/resources/chromedriver");
+            System.setProperty("webdriver.chrome.driver", "src/main/resources/chromedriver_126");
             ChromeOptions options = new ChromeOptions();
+//            options.addArguments("headless");
             options.setBinary("/Applications/Yandex.app/Contents/MacOS/Yandex");
             driver = new ChromeDriver(options);
             initializeDriver();

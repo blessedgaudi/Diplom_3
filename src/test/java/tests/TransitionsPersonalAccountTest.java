@@ -4,6 +4,7 @@ import client.User;
 import com.github.javafaker.Faker;
 import io.qameta.allure.Description;
 import io.qameta.allure.junit4.DisplayName;
+import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -14,15 +15,11 @@ import org.openqa.selenium.WebDriver;
 import page_object.LoginPage;
 import page_object.MainPage;
 import page_object.ProfilePage;
-import page_object.RegisterPage;
 import client.UserClient;
 import io.restassured.response.Response;
 
-
-
 @RunWith(Parameterized.class)
 public class TransitionsPersonalAccountTest {
-
     private WebDriver driver;
     private String driverType;
     private String email;
@@ -43,6 +40,9 @@ public class TransitionsPersonalAccountTest {
         // Добавляем WebDriver
         WebDriverSetup webDriverSetup = new WebDriverSetup(driverType);
         driver = webDriverSetup.getDriver();
+
+        // Регистрация пользователя через API
+        registerUser();
     }
 
     @Parameterized.Parameters(name = "Результаты проверок браузера: {0}")
@@ -53,75 +53,85 @@ public class TransitionsPersonalAccountTest {
         };
     }
 
-    // Метод для регистрации пользователя перед тестами авторизации
+    // Метод для регистрации пользователя
     private void registerUser() {
-        MainPage mainPage = new MainPage(driver);
-        mainPage.clickOnAccountButton(); // Переход на страницу авторизации
-        RegisterPage registerPage = new RegisterPage(driver);
-        registerPage.waitForLoadRegisterPage(); // Ожидание загрузки страницы регистрации
-        // Регистрация нового пользователя
         Response response = UserClient.postCreateNewUser(new User("Гарри", email, password));
         accessToken = response.jsonPath().getString("accessToken"); // Получение токена
         // Проверка успешной регистрации
-        Assert.assertTrue("Не удалось зарегистрировать пользователя", response.jsonPath().getBoolean("success"));
+        response.then().assertThat().statusCode(200).and().body("success", Matchers.is(true));
     }
 
     @Test
     @DisplayName("Переход в личный кабинет.")
     @Description("Проверка перехода по клику на 'Личный кабинет'.")
     public void transitionToProfilePageTest() {
-        registerUser(); // Регистрация пользователя перед авторизацией
+        MainPage mainPage = new MainPage(driver);
+        mainPage.waitForLoadMainPage();
+        mainPage.clickOnAccountButton();
+
         LoginPage loginPage = new LoginPage(driver);
         loginPage.waitForLoadEntrance();
-        Assert.assertTrue("Страница авторизации не отобразилась", driver.findElement(loginPage.entrance).isDisplayed());
+        loginPage.authorization(email, password); // Залогиниться
+
+        mainPage.clickOnAccountButton();
+
+        ProfilePage profilePage = new ProfilePage(driver);
+
+        Assert.assertTrue(driver.findElement(profilePage.textOnProfilePage).isDisplayed());
     }
 
     @Test
     @DisplayName("Переход в конструктор из личного кабинета.")
     @Description("Проверка перехода на вкладку 'Конструктор' из страницы авторизации пользователя.")
     public void transitionToConstructorFromProfilePageTest() {
-        registerUser(); // Регистрация пользователя перед авторизацией
         MainPage mainPage = new MainPage(driver);
-        mainPage.waitForInvisibilityLoadingAnimation();
+        mainPage.waitForLoadMainPage();
         mainPage.clickOnAccountButton();
+
         LoginPage loginPage = new LoginPage(driver);
         loginPage.waitForLoadEntrance();
-        loginPage.clickOnConstructorButton();
-        mainPage.waitForLoadMainPage();
-        Assert.assertTrue("Переход в конструктор из личного кабинета не прошел", driver.findElement(mainPage.textBurgerMainPage).isDisplayed());
+        loginPage.authorization(email, password); // Залогиниться
+
+        mainPage.clickOnConstructorButton(); // Переход в конструктор
+
+        Assert.assertTrue(driver.findElement(mainPage.textBurgerMainPage).isDisplayed());
     }
 
     @Test
     @DisplayName("Клик по логотипу 'Stellar Burgers'.")
     @Description("Проверка перехода в конструктор при нажатии на логотип 'Stellar Burgers'.")
     public void transitionToStellarBurgersFromProfilePageTest() {
-        registerUser(); // Регистрация пользователя перед авторизацией
         MainPage mainPage = new MainPage(driver);
+        mainPage.waitForLoadMainPage();
         mainPage.clickOnAccountButton();
+
         LoginPage loginPage = new LoginPage(driver);
         loginPage.waitForLoadEntrance();
-        loginPage.clickOnLogo();
-        mainPage.waitForLoadMainPage();
-        Assert.assertTrue("Конструктор при клике на логотип не загрузился", driver.findElement(mainPage.textBurgerMainPage).isDisplayed());
+        loginPage.authorization(email, password); // Залогиниться
+
+        mainPage.clickOnLogo(); // Клик по логотипу
+
+        Assert.assertTrue(driver.findElement(mainPage.textBurgerMainPage).isDisplayed());
     }
 
     @Test
     @DisplayName("Выход из аккаунта")
     @Description("Проверка выхода по кнопке 'Выйти' в личном кабинете.")
     public void exitFromProfileTest() {
-        registerUser(); // Регистрация пользователя перед авторизацией
         MainPage mainPage = new MainPage(driver);
-        mainPage.clickOnAccountButton();
-        LoginPage loginPage = new LoginPage(driver);
-        loginPage.waitForLoadEntrance();
-        loginPage.authorization(email, password);
         mainPage.waitForLoadMainPage();
         mainPage.clickOnAccountButton();
+
+        LoginPage loginPage = new LoginPage(driver);
+        loginPage.waitForLoadEntrance();
+        loginPage.authorization(email, password); // Залогиниться
+
+        mainPage.clickOnAccountButton();
+
         ProfilePage profilePage = new ProfilePage(driver);
-        profilePage.waitForLoadProfilePage();
         profilePage.clickOnExitButton();
-        mainPage.waitForInvisibilityLoadingAnimation();
-        Assert.assertTrue("Не удалось выйти из аккаунта", driver.findElement(loginPage.entrance).isDisplayed());
+
+        Assert.assertTrue(driver.findElement(loginPage.entrance).isDisplayed());
     }
 
     @After
@@ -131,7 +141,6 @@ public class TransitionsPersonalAccountTest {
             UserClient.deleteUser(accessToken);
         }
         // Закрытие браузера
-        WebDriverSetup webDriverSetup = new WebDriverSetup(driverType);
-        webDriverSetup.closeDriver();
+        driver.quit();
     }
 }

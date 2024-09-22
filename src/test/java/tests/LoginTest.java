@@ -5,19 +5,18 @@ import com.github.javafaker.Faker;
 import io.qameta.allure.Description;
 import io.qameta.allure.junit4.DisplayName;
 import org.hamcrest.Matchers;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.openqa.selenium.WebDriver;
-import org.junit.After;
 import page_object.LoginPage;
 import page_object.MainPage;
 import page_object.RecoverPasswordPage;
-import page_object.RegisterPage;
-import client.UserClient; // Импортируем UserClient
+import client.UserClient;
 import io.restassured.response.Response;
-
+import page_object.RegisterPage;
 
 @RunWith(Parameterized.class)
 public class LoginTest {
@@ -33,7 +32,6 @@ public class LoginTest {
 
     @Before
     public void startUp() {
-
         // Добавляем WebDriver
         WebDriverSetup webDriverSetup = new WebDriverSetup(driverType);
         driver = webDriverSetup.getDriver();
@@ -42,11 +40,14 @@ public class LoginTest {
         Faker faker = new Faker();
         email = faker.internet().emailAddress(); // Генерация уникального email
         password = faker.internet().password(); // Генерация уникального пароля
+
+        // Регистрация пользователя через API
+        registerUser();
     }
 
     @Parameterized.Parameters(name = "Результаты проверок браузера: {0}")
     public static Object[][] getDataDriver() {
-        return new Object[][]{
+        return new Object[][] {
                 {"chromedriver"},
                 {"yandexdriver"},
         };
@@ -54,65 +55,61 @@ public class LoginTest {
 
     // Метод для регистрации пользователя
     private void registerUser() {
-        MainPage mainPage = new MainPage(driver);
-        mainPage.clickOnLoginButton(); // Переход на страницу авторизации
-        LoginPage loginPage = new LoginPage(driver);
-        loginPage.clickOnRegister(); // Переход на страницу регистрации
-        RegisterPage registerPage = new RegisterPage(driver);
-
-        // Используем сгенерированные email и пароль
         Response response = UserClient.postCreateNewUser(new User("Гарри", email, password));
         accessToken = response.jsonPath().getString("accessToken"); // Получение токена
         // Проверка успешной регистрации
-        response.then().assertThat().statusCode(201).and().body("success", Matchers.is(true));
+        response.then().assertThat().statusCode(200).and().body("success", Matchers.is(true));
     }
 
     @Test
     @DisplayName("Вход по кнопке 'Войти в аккаунт'.")
     @Description("Проверка кнопки 'Войти в аккаунт' на главной странице лендинга.")
     public void enterByLoginButtonTest() {
-        registerUser(); // Регистрация перед авторизацией
-        LoginPage loginPage = new LoginPage(driver);
-        loginPage.authorization(email, password);
         MainPage mainPage = new MainPage(driver);
         mainPage.waitForLoadMainPage();
+        mainPage.clickOnLoginButton();
+        LoginPage loginPage = new LoginPage(driver);
+        loginPage.authorization(email, password);
     }
 
     @Test
     @DisplayName("Вход по кнопке 'Личный Кабинет'.")
     @Description("Проверка кнопки 'Личный Кабинет' на хедере главной страницы.")
     public void enterByPersonalAccountButtonTest() {
-        registerUser(); // Регистрация перед авторизацией
-        LoginPage loginPage = new LoginPage(driver);
-        loginPage.authorization(email, password);
         MainPage mainPage = new MainPage(driver);
         mainPage.waitForLoadMainPage();
+        mainPage.clickOnAccountButton();
+        LoginPage loginPage = new LoginPage(driver);
+        loginPage.authorization(email, password);
     }
 
     @Test
     @DisplayName("Вход через кнопку в форме регистрации.")
     @Description("Проверка входа через форму регистрации.")
     public void enterByRegistrationFormTest() {
-        registerUser(); // Регистрация перед авторизацией
-        LoginPage loginPage = new LoginPage(driver);
-        loginPage.authorization(email, password); // Используем ранее зарегистрированные данные
         MainPage mainPage = new MainPage(driver);
         mainPage.waitForLoadMainPage();
+        mainPage.clickOnAccountButton();
+        LoginPage loginPage = new LoginPage(driver);
+        loginPage.clickOnRegister();
+        RegisterPage registerPage = new RegisterPage(driver);
+        registerPage.clickOnLogin();
+        loginPage.authorization(email, password);
     }
 
     @Test
     @DisplayName("Вход через кнопку в форме восстановления пароля.")
     @Description("Проверка входа через форму восстановления пароля.")
     public void enterByPasswordRecoveryFormatTest() {
-        registerUser(); // Регистрация перед авторизацией
+        MainPage mainPage = new MainPage(driver);
+        mainPage.waitForLoadMainPage();
+        mainPage.clickOnAccountButton();
         LoginPage loginPage = new LoginPage(driver);
         loginPage.clickOnForgotPasswordLink();
         RecoverPasswordPage recoverPasswordPage = new RecoverPasswordPage(driver);
         recoverPasswordPage.waitForLoadedRecoverPassword();
         recoverPasswordPage.clickOnLoginLink();
         loginPage.authorization(email, password);
-        MainPage mainPage = new MainPage(driver);
-        mainPage.waitForLoadMainPage();
     }
 
     @After
@@ -122,7 +119,6 @@ public class LoginTest {
             UserClient.deleteUser(accessToken);
         }
         // Закрытие браузера
-        WebDriverSetup webDriverSetup = new WebDriverSetup(driverType);
-        webDriverSetup.closeDriver();
+        driver.quit();
     }
 }

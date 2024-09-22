@@ -23,6 +23,8 @@ public class RegisterPage {
     public final By errorPasswordText = By.xpath(".//p[text()='Некорректный пароль']");
     // Текст заголовка "Регистрация" для проверки перехода на страницу регистрации
     public final By registerText = By.xpath(".//div/h2[text()='Регистрация']");
+    //Ссылка "Зарегистрироваться"
+    private final By loginLink = By.xpath(".//a[@href='/login' and text()='Войти']");
 
 
     public RegisterPage(WebDriver driver) {
@@ -50,6 +52,12 @@ public class RegisterPage {
         waitForInvisibilityLoadingAnimation();
     }
 
+    // Клик по кнопке "Зарегистрироваться"
+    public void clickOnLogin() {
+        driver.findElement(loginLink).click();
+        waitForInvisibilityLoadingAnimation();
+    }
+
     @Step("Регистрация пользователя")
     public void registration(String name, String email, String password) {
         setName(name);
@@ -57,6 +65,8 @@ public class RegisterPage {
         setPassword(password);
         clickOnRegisterButton();
     }
+
+
 
     @Step("Выставлено ожидание загрузки страницы регистрации через текст 'Регистрация'.")
     public void waitForLoadRegisterPage() {

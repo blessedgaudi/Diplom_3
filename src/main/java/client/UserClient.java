@@ -1,6 +1,7 @@
 package client;
 
 import io.qameta.allure.Step;
+import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import static io.restassured.RestAssured.given;
 import org.hamcrest.Matchers;
@@ -9,28 +10,31 @@ import java.util.Locale;
 
 public class UserClient {
 
+    // Установим базовый URL
+    private static final String BASE_URL = "https://stellarburgers.nomoreparties.site/";
+
 
     @Step("Успешное создание уникального пользователя.")
     public static Response postCreateNewUser(User user) {
-        return given().log().all()
+        return given().baseUri(BASE_URL).log().all()
                 .header("Content-type", "application/json")
                 .body(user)
                 .when()
                 .post("/api/auth/register");
     }
 
-
-
     @Step("Неуспешный ответ сервера на регистрацию пользователя.")
     public void checkFailedResponseAuthRegister(Response response) {
         response.then().log().all()
-                .assertThat().statusCode(403).and().body("success", Matchers.is(false))
+                .assertThat().statusCode(403)
+                .and().body("success", Matchers.is(false))
                 .and().body("message", Matchers.is("Email, password and name are required fields"));
     }
 
     @Step("Логин под существующим пользователем.")
     public static Response checkRequestAuthLogin(User user) {
         return given()
+                .baseUri(BASE_URL)
                 .log()
                 .all()
                 .header("Content-type", "application/json")
@@ -39,17 +43,18 @@ public class UserClient {
                 .post("/api/auth/login");
     }
 
-
     @Step("Логин с неверным логином и паролем.")
     public void checkFailedResponseAuthLogin(Response response) {
         response.then().log().all()
-                .assertThat().statusCode(401).and().body("success", Matchers.is(false))
+                .assertThat().statusCode(401)
+                .and().body("success", Matchers.is(false))
                 .and().body("message", Matchers.is("email or password are incorrect"));
     }
 
     @Step("Изменение данных пользователя с авторизацией.")
     public Response sendPatchRequestWithAuthorizationApiAuthUser(User user, String token) {
         return given()
+                .baseUri(BASE_URL)
                 .log()
                 .all()
                 .header("Content-Type", "application/json")
@@ -62,6 +67,7 @@ public class UserClient {
     @Step("Изменение данных пользователя без авторизации.")
     public Response sendPatchRequestWithoutAuthorizationApiAuthUser(User user) {
         return given()
+                .baseUri(BASE_URL)
                 .log()
                 .all()
                 .header("Content-Type", "application/json")
@@ -83,14 +89,16 @@ public class UserClient {
     @Step("Неуспешный ответ сервера на изменение данных пользователя.")
     public void checkFailedResponseAuthUser(Response response) {
         response.then().log().all()
-                .assertThat().statusCode(401).and().body("success", Matchers.is(false))
+                .assertThat().statusCode(401)
+                .and().body("success", Matchers.is(false))
                 .and().body("message", Matchers.is("You should be authorised"));
     }
 
     @Step("Удаление пользователя")
-    public static Response deleteUser(String accessToken){
+    public static Response deleteUser(String accessToken) {
         return given()
-                .header("Authorization",accessToken)
+                .baseUri(BASE_URL)
+                .header("Authorization", accessToken)
                 .when()
                 .delete("/api/auth/user");
     }
